@@ -292,7 +292,12 @@ export default {
         return
       }
       
+      // Check if editor has content
       const docxContent = htmlToDocxTemplate(this.editorData)
+      if (!docxContent.trim()) {
+        alert('Please add some content to the template before saving')
+        return
+      }
       
       const template = {
         id: this.templateId,
@@ -311,6 +316,12 @@ export default {
         this.templateId = template.id || this.templateId
         alert('Template saved successfully!')
         this.loadAvailableTemplates()
+        
+        // Clear editor and form fields for new template
+        this.templateName = ''
+        this.templateDescription = ''
+        this.editorData = ''
+        this.templateId = null
       } else {
         alert('Error saving template')
       }
