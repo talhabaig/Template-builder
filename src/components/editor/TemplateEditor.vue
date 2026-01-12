@@ -16,19 +16,6 @@
         />
       </div>
       <div class="toolbar-right">
-        <input
-          ref="docxFileInput"
-          type="file"
-          accept=".docx"
-          style="display: none"
-          @change="handleDocxImport"
-        />
-        <button
-          class="btn btn-info"
-          @click="importDocx"
-        >
-          Import DOCX
-        </button>
         <button
           class="btn btn-secondary"
           @click="loadTemplate"
@@ -138,7 +125,7 @@ import ClassicEditor from '@ckeditor/ckeditor5-build-classic'
 import VariablePanel from '@/components/variables/VariablePanel.vue'
 import { htmlToDocxTemplate, docxTemplateToHtml } from '@/utils/templateConverter'
 import { getAllTemplates, saveTemplate as saveTemplateToStorage, getTemplate } from '@/utils/templateStorage'
-import { importDocx, exportToDocx } from '@/utils/docxHandler'
+import { exportToDocx } from '@/utils/docxHandler'
 
 export default {
   name: 'TemplateEditor',
@@ -380,44 +367,6 @@ export default {
       }
     },
     
-    importDocx() {
-      // Trigger file input click
-      this.$refs.docxFileInput.click()
-    },
-    
-    async handleDocxImport(event) {
-      const file = event.target.files[0]
-      if (!file) return
-      
-      if (!file.name.endsWith('.docx')) {
-        alert('Please select a valid DOCX file')
-        return
-      }
-      
-      try {
-        // Show loading message
-        alert('Importing DOCX file... Please wait.')
-        
-        const { content, htmlContent } = await importDocx(file)
-        
-        // Set template name from file name (without extension)
-        this.templateName = file.name.replace(/\.docx$/i, '')
-        this.templateDescription = `Imported from ${file.name}`
-        
-        // Load content into editor
-        this.editorData = htmlContent || docxTemplateToHtml(content)
-        
-        // Clear file input
-        event.target.value = ''
-        
-        alert('DOCX file imported successfully!')
-      } catch (error) {
-        console.error('Import error:', error)
-        alert(`Error importing DOCX file: ${error.message}`)
-        event.target.value = ''
-      }
-    },
-    
     formatDate(dateString) {
       if (!dateString) return 'Unknown'
       const date = new Date(dateString)
@@ -534,14 +483,6 @@ export default {
   background: #218838;
 }
 
-.btn-info {
-  background: #17a2b8;
-  color: white;
-}
-
-.btn-info:hover {
-  background: #138496;
-}
 
 .editor-container {
   display: flex;
