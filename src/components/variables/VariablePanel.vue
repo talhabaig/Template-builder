@@ -1,13 +1,29 @@
 <template>
-  <div class="variable-panel">
+  <div class="variable-panel" @click.stop @touchstart.stop @touchend.stop>
     <div class="variable-panel-header">
-      <h3>Variables</h3>
+      <div class="header-top">
+        <h3>Variables</h3>
+        <button
+          v-if="showCloseButton"
+          class="close-btn"
+          @click.stop="closePanel"
+          aria-label="Close variables panel"
+        >
+          ✕
+        </button>
+      </div>
       <div class="search-box">
         <input
           v-model="searchQuery"
           type="text"
           placeholder="Search variables..."
           class="search-input"
+          ref="searchInput"
+          @click.stop
+          @focus.stop="handleSearchFocus"
+          @touchstart.stop
+          @touchend.stop
+          @blur.stop
         />
       </div>
     </div>
@@ -20,7 +36,7 @@
       >
         <div
           class="category-header"
-          @click="toggleCategory(category.id)"
+          @click.stop="toggleCategory(category.id)"
         >
           <span class="category-icon">{{ category.icon }}</span>
           <span class="category-name">{{ category.name }}</span>
@@ -39,7 +55,7 @@
             <div
               v-if="!variable.isLoop"
               class="variable-simple"
-              @click="insertVariable(variable)"
+              @click.stop="insertVariable(variable)"
               :title="variable.description || variable.label"
             >
               <span class="variable-label">{{ variable.label }}</span>
@@ -52,7 +68,7 @@
             >
               <div
                 class="variable-loop-header"
-                @click="toggleVariable(variable.id)"
+                @click.stop="toggleVariable(variable.id)"
               >
                 <span class="variable-label">{{ variable.label }}</span>
                 <span class="variable-toggle">{{ expandedVariables[variable.id] ? '▼' : '▶' }}</span>
@@ -64,21 +80,21 @@
               >
                 <button
                   class="btn-insert-loop"
-                  @click="insertLoop(variable)"
+                  @click.stop="insertLoop(variable)"
                 >
                   Insert Loop
                 </button>
+              <div
+                v-if="variable.innerVariables"
+                class="inner-variables"
+              >
                 <div
-                  v-if="variable.innerVariables"
-                  class="inner-variables"
+                  v-for="innerVar in variable.innerVariables"
+                  :key="innerVar.id"
+                  class="variable-inner"
+                  @click.stop="insertVariable(innerVar, variable)"
+                  :title="innerVar.label"
                 >
-                  <div
-                    v-for="innerVar in variable.innerVariables"
-                    :key="innerVar.id"
-                    class="variable-inner"
-                    @click="insertVariable(innerVar, variable)"
-                    :title="innerVar.label"
-                  >
                     <span class="variable-label">{{ innerVar.label }}</span>
                     <span class="variable-syntax">{{ innerVar.syntax }}</span>
                   </div>
@@ -97,6 +113,12 @@ import { variableCategories, getAllVariables } from '@/data/variables'
 
 export default {
   name: 'VariablePanel',
+  props: {
+    showCloseButton: {
+      type: Boolean,
+      default: false
+    }
+  },
   data() {
     return {
       categories: variableCategories,
@@ -163,6 +185,16 @@ export default {
       this.$emit('insert-loop', {
         variable
       })
+    },
+    closePanel() {
+      this.$emit('close-panel')
+    },
+    handleSearchFocus(event) {
+      // Prevent any parent handlers from closing the panel when search is focused
+      // This ensures the panel stays open when user clicks to search
+      if (event) {
+        event.stopPropagation()
+      }
     }
   }
 }
@@ -171,6 +203,7 @@ export default {
 <style scoped>
 .variable-panel {
   width: 300px;
+  min-width: 300px;
   height: 100%;
   background: #f8f9fa;
   border-right: 1px solid #dee2e6;
@@ -179,17 +212,131 @@ export default {
   overflow: hidden;
 }
 
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .variable-panel {
+    width: 100%;
+    min-width: 100%;
+    height: auto;
+    max-height: 60vh;
+    border-right: none;
+    border-bottom: 1px solid #dee2e6;
+  }
+
+  .variable-panel-header {
+    padding: 12px;
+  }
+
+  .variable-panel-header h3 {
+    font-size: 16px;
+  }
+
+  .category-header {
+    padding: 10px 12px;
+  }
+
+  .variable-simple,
+  .variable-inner {
+    padding: 8px 12px 8px 24px;
+  }
+
+  .variable-label {
+    font-size: 13px;
+  }
+
+  .variable-syntax {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .variable-panel {
+    max-height: 55vh;
+  }
+
+  .variable-panel-header {
+    padding: 10px;
+  }
+
+  .variable-panel-header h3 {
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+
+  .search-input {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+
+  .category-header {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .variable-simple,
+  .variable-inner {
+    padding: 6px 10px 6px 20px;
+  }
+
+  .variable-label {
+    font-size: 12px;
+  }
+
+  .variable-syntax {
+    font-size: 10px;
+    padding: 1px 4px;
+  }
+
+  .btn-insert-loop {
+    padding: 6px;
+    font-size: 12px;
+  }
+}
+
 .variable-panel-header {
   padding: 16px;
   border-bottom: 1px solid #dee2e6;
   background: white;
 }
 
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
 .variable-panel-header h3 {
-  margin: 0 0 12px 0;
+  margin: 0;
   font-size: 18px;
   font-weight: 600;
   color: #212529;
+  flex: 1;
+}
+
+.close-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  padding: 0;
+  transition: background-color 0.2s;
+}
+
+.close-btn:hover {
+  background: #c82333;
+}
+
+.close-btn:active {
+  background: #bd2130;
 }
 
 .search-box {
@@ -214,7 +361,9 @@ export default {
 .variable-categories {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 8px 0;
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }
 
 .category-section {

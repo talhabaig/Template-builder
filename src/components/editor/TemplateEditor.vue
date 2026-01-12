@@ -51,9 +51,20 @@
     </div>
     
     <div class="editor-container">
+      <button
+        v-if="showMobileVariableToggle"
+        class="mobile-toggle-btn"
+        @click="toggleVariablePanel"
+      >
+        {{ showVariablePanel ? '✕ Close Variables' : '☰ Variables' }}
+      </button>
       <VariablePanel
+        v-show="showVariablePanel"
+        class="variable-panel-wrapper"
+        :show-close-button="isMobile"
         @insert-variable="handleInsertVariable"
         @insert-loop="handleInsertLoop"
+        @close-panel="toggleVariablePanel"
       />
       
       <div class="editor-content">
@@ -144,6 +155,10 @@ export default {
       templateId: null,
       showLoadModal: false,
       availableTemplates: [],
+      showVariablePanel: true,
+      isMobile: false,
+      resizeTimeout: null,
+      resizeHandler: null,
       editorConfig: {
         toolbar: [
           'heading',
@@ -185,10 +200,32 @@ export default {
       const text = htmlToDocxTemplate(this.editorData)
       const matches = text.match(/\{[^}]+\}/g)
       return matches ? matches.length : 0
+    },
+    showMobileVariableToggle() {
+      return this.isMobile
     }
   },
   mounted() {
     this.loadAvailableTemplates()
+    this.checkMobile()
+    // Debounce resize to prevent closing panel when keyboard appears
+    this.resizeHandler = () => {
+      if (this.resizeTimeout) {
+        clearTimeout(this.resizeTimeout)
+      }
+      this.resizeTimeout = setTimeout(() => {
+        this.checkMobile()
+      }, 150)
+    }
+    window.addEventListener('resize', this.resizeHandler)
+  },
+  beforeDestroy() {
+    if (this.resizeTimeout) {
+      clearTimeout(this.resizeTimeout)
+    }
+    if (this.resizeHandler) {
+      window.removeEventListener('resize', this.resizeHandler)
+    }
   },
   methods: {
     onEditorReady(editor) {
@@ -385,6 +422,26 @@ export default {
       if (!dateString) return 'Unknown'
       const date = new Date(dateString)
       return date.toLocaleDateString() + ' ' + date.toLocaleTimeString()
+    },
+    
+    checkMobile() {
+      const wasMobile = this.isMobile
+      this.isMobile = window.innerWidth <= 768
+      
+      // Only change panel state if switching between mobile/desktop
+      // Don't reset if already on mobile (to prevent closing when keyboard appears)
+      if (!wasMobile && this.isMobile) {
+        // Just switched to mobile - hide panel by default
+        this.showVariablePanel = false
+      } else if (wasMobile && !this.isMobile) {
+        // Just switched to desktop - show panel
+        this.showVariablePanel = true
+      }
+      // If already on mobile and staying on mobile, don't change panel state
+    },
+    
+    toggleVariablePanel() {
+      this.showVariablePanel = !this.showVariablePanel
     }
   }
 }
@@ -405,12 +462,15 @@ export default {
   padding: 12px 16px;
   background: #f8f9fa;
   border-bottom: 1px solid #dee2e6;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .toolbar-left {
   display: flex;
   gap: 12px;
   flex: 1;
+  min-width: 0;
 }
 
 .template-name-input,
@@ -423,15 +483,18 @@ export default {
 
 .template-name-input {
   width: 200px;
+  min-width: 150px;
 }
 
 .template-desc-input {
   width: 300px;
+  min-width: 200px;
 }
 
 .toolbar-right {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .btn {
@@ -484,6 +547,114 @@ export default {
   display: flex;
   flex: 1;
   overflow: hidden;
+  flex-direction: row;
+}
+
+/* Mobile Responsive Styles */
+.mobile-toggle-btn {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .editor-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 10px;
+  }
+
+  .toolbar-left {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .template-name-input,
+  .template-desc-input {
+    width: 100%;
+    min-width: 100%;
+  }
+
+  .toolbar-right {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .btn {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+
+  .editor-container {
+    flex-direction: column;
+    position: relative;
+  }
+
+  .mobile-toggle-btn {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-bottom: 1px solid #0056b3;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    z-index: 10;
+  }
+
+  .mobile-toggle-btn:active {
+    background: #0056b3;
+  }
+
+  .variable-panel-wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    touch-action: manipulation; /* Prevent double-tap zoom on mobile */
+  }
+  
+  .variable-panel-wrapper * {
+    touch-action: manipulation;
+  }
+
+  .editor-content {
+    min-height: 300px;
+    width: 100%;
+  }
+
+  .editor-content >>> .ck-content {
+    min-height: 300px;
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+
+  .modal-content {
+    width: 95%;
+    max-width: 95%;
+    margin: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .editor-toolbar {
+    padding: 8px;
+  }
+
+  .btn {
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+
+  .editor-info {
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11px;
+  }
 }
 
 .editor-content {
