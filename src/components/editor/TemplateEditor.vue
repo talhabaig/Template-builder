@@ -299,6 +299,17 @@ export default {
         return
       }
       
+      // If editing an existing template, ask for confirmation
+      if (this.templateId) {
+        const confirmed = confirm(
+          `You are about to update the existing template "${this.templateName}".\n\n` +
+          'This will overwrite the previous version. Are you sure you want to continue?'
+        )
+        if (!confirmed) {
+          return
+        }
+      }
+      
       const template = {
         id: this.templateId,
         name: this.templateName.trim(),
