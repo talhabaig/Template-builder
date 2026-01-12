@@ -1,16 +1,24 @@
 <template>
   <div class="home">
-   <HelloWorld/>
+    <TemplateEditor />
   </div>
 </template>
 
 <script>
-import HelloWorld from '@/components/HelloWorld.vue';
+import TemplateEditor from '@/components/editor/TemplateEditor.vue'
 
 export default {
   name: 'HomeView',
   components: {
-    HelloWorld
+    TemplateEditor
   }
 }
 </script>
+
+<style scoped>
+.home {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+</style>
