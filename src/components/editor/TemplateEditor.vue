@@ -30,9 +30,9 @@
         </button>
         <button
           class="btn btn-success"
-          @click="exportTemplate"
+          @click="exportTemplateAsJson"
         >
-          Export DOCX
+          Export JSON
         </button>
       </div>
     </div>
@@ -215,6 +215,34 @@ export default {
     }
   },
   methods: {
+    exportTemplateAsJson() {
+      if (!this.templateName.trim()) {
+        alert('Please enter a template name before exporting')
+        return
+      }
+      try {
+        const templateData = {
+          name: this.templateName,
+          description: this.templateDescription,
+          content: this.editorData,
+          date: new Date().toISOString()
+        }
+        const jsonStr = JSON.stringify(templateData, null, 2)
+        const blob = new Blob([jsonStr], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${this.templateName.replace(/\s+/g, '_')}.json`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+        alert('Template exported as JSON file successfully!')
+      } catch (error) {
+        console.error('Export JSON error:', error)
+        alert(`Error exporting template as JSON: ${error.message}`)
+      }
+    },
     onEditorReady(editor) {
       this.editorInstance = editor
       
@@ -362,32 +390,6 @@ export default {
       this.availableTemplates = getAllTemplates()
     },
     
-    async exportTemplate() {
-      if (!this.templateName.trim()) {
-        alert('Please enter a template name before exporting')
-        return
-      }
-      
-      try {
-        const docxContent = htmlToDocxTemplate(this.editorData)
-        
-        // Export as DOCX file
-        const blob = await exportToDocx(docxContent, this.templateName)
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `${this.templateName.replace(/\s+/g, '_')}.docx`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-        
-        alert('Template exported as DOCX file successfully!')
-      } catch (error) {
-        console.error('Export error:', error)
-        alert(`Error exporting template: ${error.message}`)
-      }
-    },
     
     formatDate(dateString) {
       if (!dateString) return 'Unknown'
