@@ -170,9 +170,9 @@ export default {
         heading: {
           options: [
             { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
-            { model: 'heading1', view: 'heading1', title: 'Heading 1', class: 'ck-heading_heading1' },
-            { model: 'heading2', view: 'heading2', title: 'Heading 2', class: 'ck-heading_heading2' },
-            { model: 'heading3', view: 'heading3', title: 'Heading 3', class: 'ck-heading_heading3' }
+            { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
+            { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
+            { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
           ]
         }
       }
@@ -643,6 +643,30 @@ export default {
   min-height: 400px;
   font-size: 14px;
   line-height: 1.6;
+}
+
+/* Style CKEditor headings. Some existing content may use custom tags like <heading1> etc;
+   include both semantic h1/h2/h3 and legacy heading1/heading2/heading3 selectors. */
+.editor-content >>> .ck-content heading1,
+.editor-content >>> .ck-content h1,
+.editor-content >>> .ck-content .ck-heading_heading1 {
+  font-size: 1.8em !important;
+  font-weight: 700 !important;
+  margin: 0.67em 0 !important;
+}
+.editor-content >>> .ck-content heading2,
+.editor-content >>> .ck-content h2,
+.editor-content >>> .ck-content .ck-heading_heading2 {
+  font-size: 1.4em !important;
+  font-weight: 600 !important;
+  margin: 0.75em 0 !important;
+}
+.editor-content >>> .ck-content heading3,
+.editor-content >>> .ck-content h3,
+.editor-content >>> .ck-content .ck-heading_heading3 {
+  font-size: 1.2em !important;
+  font-weight: 600 !important;
+  margin: 0.85em 0 !important;
 }
 
 .editor-footer {
