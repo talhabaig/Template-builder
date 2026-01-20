@@ -259,11 +259,19 @@ export default {
     handleInsertLoop({ variable }) {
       if (!this.editorInstance) return
       const loopVar = variable.id.replace(/^case\./, '')
-      this.editorInstance.model.change(writer => {
-        writer.insertText(
-          `{#${loopVar}}\n  \n{/${loopVar}}`,
-          this.editorInstance.model.document.selection.getFirstPosition()
-        )
+      const model = this.editorInstance.model
+      const selection = model.document.selection
+      const insertPosition = selection.getFirstPosition()
+      // Insert loop block
+      model.change(writer => {
+        // Insert opening tag
+        writer.insertText(`{#${loopVar}}\n  `, insertPosition)
+        // Calculate position after opening tag
+        const afterOpen = insertPosition.getShiftedBy(`{#${loopVar}}\n  `.length)
+        // Insert closing tag
+        writer.insertText(`\n{/${loopVar}}`, afterOpen)
+        // Move selection (cursor) between the tags, after the spaces
+        writer.setSelection(afterOpen)
       })
     },
 
