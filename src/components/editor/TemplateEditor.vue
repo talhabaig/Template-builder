@@ -16,27 +16,14 @@
         />
       </div>
       <div class="toolbar-right">
-        <button
-          class="btn btn-secondary"
-          @click="loadTemplate"
-        >
-          Load
-        </button>
-        <button
-          class="btn btn-primary"
-          @click="saveTemplate"
-        >
-          Save
-        </button>
-        <button
-          class="btn btn-success"
-          @click="exportTemplateAsJson"
-        >
+        <button class="btn btn-secondary" @click="loadTemplate">Load</button>
+        <button class="btn btn-primary" @click="saveTemplate">Save</button>
+        <button class="btn btn-success" @click="exportTemplateAsJson">
           Export JSON
         </button>
       </div>
     </div>
-    
+
     <div class="editor-container">
       <button
         v-if="showMobileVariableToggle"
@@ -53,7 +40,7 @@
         @insert-loop="handleInsertLoop"
         @close-panel="toggleVariablePanel"
       />
-      
+
       <div class="editor-content">
         <ckeditor
           :editor="editor"
@@ -61,7 +48,7 @@
           :config="editorConfig"
           @ready="onEditorReady"
         />
-        
+
         <div class="editor-footer">
           <div class="editor-info">
             <span>Characters: {{ characterCount }}</span>
@@ -70,37 +57,25 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Template Load Modal -->
     <div
       v-if="showLoadModal"
       class="modal-overlay"
       @click="showLoadModal = false"
     >
-      <div
-        class="modal-content"
-        @click.stop
-      >
+      <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h3>Load Template</h3>
-          <button
-            class="modal-close"
-            @click="showLoadModal = false"
-          >
-            ×
-          </button>
+          <button class="modal-close" @click="showLoadModal = false">×</button>
         </div>
+
         <div class="modal-body">
-          <div
-            v-if="availableTemplates.length === 0"
-            class="no-templates"
-          >
+          <div v-if="availableTemplates.length === 0" class="no-templates">
             No saved templates found
           </div>
-          <div
-            v-else
-            class="template-list"
-          >
+
+          <div v-else class="template-list">
             <div
               v-for="template in availableTemplates"
               :key="template.id"
@@ -108,7 +83,9 @@
               @click="selectTemplate(template)"
             >
               <div class="template-list-name">{{ template.name }}</div>
-              <div class="template-list-desc">{{ template.description || 'No description' }}</div>
+              <div class="template-list-desc">
+                {{ template.description || 'No description' }}
+              </div>
               <div class="template-list-meta">
                 Updated: {{ formatDate(template.updatedAt) }}
               </div>
@@ -123,30 +100,71 @@
 <script>
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic'
 import VariablePanel from '@/components/variables/VariablePanel.vue'
-import { htmlToDocxTemplate, docxTemplateToHtml } from '@/utils/templateConverter'
-import { getAllTemplates, saveTemplate as saveTemplateToStorage, getTemplate } from '@/utils/templateStorage'
-import { exportToDocx } from '@/utils/docxHandler'
+import { htmlToDocxTemplate } from '@/utils/templateConverter'
+import {
+  getAllTemplates,
+  saveTemplate as saveTemplateToStorage
+} from '@/utils/templateStorage'
+
+/*
+|--------------------------------------------------------------------------
+| Base64 Upload Adapter (Required for Classic Build)
+|--------------------------------------------------------------------------
+*/
+class Base64UploadAdapter {
+  constructor(loader) {
+    this.loader = loader
+  }
+
+  upload() {
+    return this.loader.file.then(
+      file =>
+        new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.readAsDataURL(file)
+
+          reader.onload = () => {
+            resolve({ default: reader.result })
+          }
+
+          reader.onerror = error => reject(error)
+        })
+    )
+  }
+
+  abort() {}
+}
+
+function CustomUploadAdapterPlugin(editor) {
+  editor.plugins.get('FileRepository').createUploadAdapter = loader => {
+    return new Base64UploadAdapter(loader)
+  }
+}
 
 export default {
   name: 'TemplateEditor',
-  components: {
-    VariablePanel
-  },
+  components: { VariablePanel },
+
   data() {
     return {
       editor: ClassicEditor,
       editorData: '',
       editorInstance: null,
+
       templateName: '',
       templateDescription: '',
       templateId: null,
+
       showLoadModal: false,
       availableTemplates: [],
       showVariablePanel: true,
       isMobile: false,
       resizeTimeout: null,
       resizeHandler: null,
+
       editorConfig: {
+        extraPlugins: [CustomUploadAdapterPlugin],
+
         toolbar: [
           'heading',
           '|',
@@ -162,257 +180,154 @@ export default {
           'link',
           'blockQuote',
           'insertTable',
+          'imageUpload',
           '|',
           'undo',
           'redo'
         ],
-        placeholder: 'Start typing your template here... Use the Variables panel to insert placeholders.',
-        heading: {
-          options: [
-            { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
-            { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
-            { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
-            { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
-          ]
-        }
+
+        image: {
+          toolbar: [
+            'imageTextAlternative',
+            '|',
+            'imageStyle:inline',
+            'imageStyle:block',
+            'imageStyle:side',
+            '|',
+            'resizeImage'
+          ],
+          resizeOptions: [
+            { name: 'resizeImage:original', value: null },
+            { name: 'resizeImage:25', value: '25' },
+            { name: 'resizeImage:50', value: '50' },
+            { name: 'resizeImage:75', value: '75' }
+          ],
+          styles: ['inline', 'block', 'side']
+        },
+
+        placeholder:
+          'Start typing your template here... Use the Variables panel to insert placeholders.'
       }
     }
   },
+
   computed: {
     characterCount() {
-      const text = htmlToDocxTemplate(this.editorData)
-      return text.length
+      return htmlToDocxTemplate(this.editorData).length
     },
     variableCount() {
-      const text = htmlToDocxTemplate(this.editorData)
-      const matches = text.match(/\{[^}]+\}/g)
+      const matches = htmlToDocxTemplate(this.editorData).match(/\{[^}]+\}/g)
       return matches ? matches.length : 0
     },
     showMobileVariableToggle() {
       return this.isMobile
     }
   },
+
   mounted() {
     this.loadAvailableTemplates()
     this.checkMobile()
-    // Debounce resize to prevent closing panel when keyboard appears
+
     this.resizeHandler = () => {
-      if (this.resizeTimeout) {
-        clearTimeout(this.resizeTimeout)
-      }
-      this.resizeTimeout = setTimeout(() => {
-        this.checkMobile()
-      }, 150)
+      clearTimeout(this.resizeTimeout)
+      this.resizeTimeout = setTimeout(this.checkMobile, 150)
     }
+
     window.addEventListener('resize', this.resizeHandler)
   },
+
   beforeDestroy() {
-    if (this.resizeTimeout) {
-      clearTimeout(this.resizeTimeout)
-    }
-    if (this.resizeHandler) {
-      window.removeEventListener('resize', this.resizeHandler)
-    }
+    window.removeEventListener('resize', this.resizeHandler)
   },
+
   methods: {
-    exportTemplateAsJson() {
-      if (!this.templateName.trim()) {
-        alert('Please enter a template name before exporting')
-        return
-      }
-      try {
-        const templateData = {
-          name: this.templateName,
-          description: this.templateDescription,
-          content: this.editorData,
-          date: new Date().toISOString()
-        }
-        const jsonStr = JSON.stringify(templateData, null, 2)
-        const blob = new Blob([jsonStr], { type: 'application/json' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `${this.templateName.replace(/\s+/g, '_')}.json`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-        alert('Template exported as JSON file successfully!')
-      } catch (error) {
-        console.error('Export JSON error:', error)
-        alert(`Error exporting template as JSON: ${error.message}`)
-      }
-    },
     onEditorReady(editor) {
       this.editorInstance = editor
-      
-      // Add custom styles for variable tokens in editor
-      const style = document.createElement('style')
-      style.textContent = `
-        /* Style variable patterns in editor content */
-        .ck-content {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-        
-        /* Note: CKEditor sanitizes HTML, so we style via CSS targeting patterns */
-        /* Variables will appear as regular text but can be styled via post-processing if needed */
-      `
-      document.head.appendChild(style)
+      editor.editing.view.focus()
     },
-    
-    handleInsertVariable({ variable, parentLoop }) {
+
+    handleInsertVariable({ variable }) {
       if (!this.editorInstance) return
-      
-      const model = this.editorInstance.model
-      const selection = model.document.selection
-      const range = selection.getFirstRange()
-      
-      // Create a styled span for the variable token
-      const variableSyntax = variable.syntax
-      const variableHtml = `<span class="variable-token" data-variable-syntax="${variableSyntax}" contenteditable="false">${variableSyntax}</span>`
-      
-      // Get current HTML, insert variable, then set back
-      const currentHtml = this.editorData || ''
-      const viewFragment = this.editorInstance.data.processor.toView(currentHtml)
-      
-      // For simplicity, insert as HTML using the editor's HTML data
-      // We'll use a simpler approach: insert text and let CSS style it
-      model.change(writer => {
-        writer.insertText(variableSyntax, range.start)
+      this.editorInstance.model.change(writer => {
+        writer.insertText(
+          variable.syntax,
+          this.editorInstance.model.document.selection.getFirstPosition()
+        )
       })
-      
-      // Focus the editor
-      this.editorInstance.editing.view.focus()
     },
-    
+
     handleInsertLoop({ variable }) {
       if (!this.editorInstance) return
-      
-      const model = this.editorInstance.model
-      const selection = model.document.selection
-      const range = selection.getFirstRange()
-      
-      // Create loop block with start and end tags
       const loopVar = variable.id.replace(/^case\./, '')
-      const loopStart = `{#${loopVar}}`
-      const loopEnd = `{/${loopVar}}`
-      
-      model.change(writer => {
-        // Insert start tag
-        writer.insertText(loopStart, range.start)
-        
-        // Insert newline and placeholder
-        const afterStart = writer.createPositionAfter(range.start)
-        writer.insertText('\n  [Insert content here - use Variables panel for inner variables]\n', afterStart)
-        
-        // Insert end tag
-        const beforeEnd = writer.createPositionAfter(afterStart)
-        writer.insertText(loopEnd, beforeEnd)
+      this.editorInstance.model.change(writer => {
+        writer.insertText(
+          `{#${loopVar}}\n  \n{/${loopVar}}`,
+          this.editorInstance.model.document.selection.getFirstPosition()
+        )
       })
-      
-      // Focus the editor
-      this.editorInstance.editing.view.focus()
     },
-    
+
     saveTemplate() {
       if (!this.templateName.trim()) {
         alert('Please enter a template name')
         return
       }
-      
-      // Check if editor has content
-      const docxContent = htmlToDocxTemplate(this.editorData)
-      if (!docxContent.trim()) {
-        alert('Please add some content to the template before saving')
-        return
-      }
-      
-      // If editing an existing template, ask for confirmation
-      if (this.templateId) {
-        const confirmed = confirm(
-          `You are about to update the existing template "${this.templateName}".\n\n` +
-          'This will overwrite the previous version. Are you sure you want to continue?'
-        )
-        if (!confirmed) {
-          return
-        }
-      }
-      
+
       const template = {
         id: this.templateId,
-        name: this.templateName.trim(),
-        description: this.templateDescription.trim(),
-        content: docxContent, // Store as docxtemplater-compatible text
-        htmlContent: this.editorData, // Store HTML for editor
-        metadata: {
-          characterCount: this.characterCount,
-          variableCount: this.variableCount
-        }
+        name: this.templateName,
+        description: this.templateDescription,
+        content: htmlToDocxTemplate(this.editorData),
+        htmlContent: this.editorData
       }
-      
-      const success = saveTemplateToStorage(template)
-      if (success) {
-        this.templateId = template.id || this.templateId
-        alert('Template saved successfully!')
-        this.loadAvailableTemplates()
-        
-        // Clear editor and form fields for new template
-        this.templateName = ''
-        this.templateDescription = ''
-        this.editorData = ''
-        this.templateId = null
-      } else {
-        alert('Error saving template')
-      }
+
+      saveTemplateToStorage(template)
+      alert('Template saved successfully!')
+      this.editorData = ''
+      this.templateName = ''
+      this.templateDescription = ''
     },
-    
+
     loadTemplate() {
-      this.loadAvailableTemplates()
       this.showLoadModal = true
     },
-    
+
     selectTemplate(template) {
       this.templateName = template.name
       this.templateDescription = template.description || ''
       this.templateId = template.id
-      
-      // Load HTML content if available, otherwise convert from docx format
-      if (template.htmlContent) {
-        this.editorData = template.htmlContent
-      } else {
-        this.editorData = docxTemplateToHtml(template.content)
-      }
-      
+      this.editorData = template.htmlContent
       this.showLoadModal = false
     },
-    
+
     loadAvailableTemplates() {
       this.availableTemplates = getAllTemplates()
     },
-    
-    
-    formatDate(dateString) {
-      if (!dateString) return 'Unknown'
-      const date = new Date(dateString)
-      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString()
+
+    exportTemplateAsJson() {
+      const blob = new Blob(
+        [JSON.stringify({ name: this.templateName, content: this.editorData })],
+        { type: 'application/json' }
+      )
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${this.templateName || 'template'}.json`
+      a.click()
+      URL.revokeObjectURL(url)
     },
-    
+
+    formatDate(date) {
+      return new Date(date).toLocaleString()
+    },
+
     checkMobile() {
       const wasMobile = this.isMobile
       this.isMobile = window.innerWidth <= 768
-      
-      // Only change panel state if switching between mobile/desktop
-      // Don't reset if already on mobile (to prevent closing when keyboard appears)
-      if (!wasMobile && this.isMobile) {
-        // Just switched to mobile - hide panel by default
-        this.showVariablePanel = false
-      } else if (wasMobile && !this.isMobile) {
-        // Just switched to desktop - show panel
-        this.showVariablePanel = true
-      }
-      // If already on mobile and staying on mobile, don't change panel state
+      if (!wasMobile && this.isMobile) this.showVariablePanel = false
+      if (wasMobile && !this.isMobile) this.showVariablePanel = true
     },
-    
+
     toggleVariablePanel() {
       this.showVariablePanel = !this.showVariablePanel
     }
@@ -788,5 +703,23 @@ export default {
 .template-list-meta {
   font-size: 12px;
   color: #adb5bd;
+}
+
+.editor-content >>> .ck-content img {
+  max-width: 200px;
+  height: auto;
+  display: block;
+}
+
+/* Center images by default */
+.editor-content >>> .ck-content figure.image {
+  margin: 1em auto;
+}
+
+.template-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #ffffff;
 }
 </style>
