@@ -303,6 +303,7 @@ export default {
       this.editorData = ''
       this.templateName = ''
       this.templateDescription = ''
+      this.loadAvailableTemplates()
     },
 
     loadTemplate() {
