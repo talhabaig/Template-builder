@@ -115,11 +115,6 @@ import {
   deleteTemplate as deleteTemplateFromStorage
 } from '@/utils/templateStorage'
 
-/*
-|--------------------------------------------------------------------------
-| Base64 Upload Adapter (Required for Classic Build)
-|--------------------------------------------------------------------------
-*/
 class Base64UploadAdapter {
   constructor(loader) {
     this.loader = loader
