@@ -80,15 +80,23 @@
               v-for="template in availableTemplates"
               :key="template.id"
               class="template-list-item"
-              @click="selectTemplate(template)"
             >
-              <div class="template-list-name">{{ template.name }}</div>
-              <div class="template-list-desc">
-                {{ template.description || 'No description' }}
+              <div @click="selectTemplate(template)" style="cursor:pointer;flex:1">
+                <div class="template-list-name">{{ template.name }}</div>
+                <div class="template-list-desc">
+                  {{ template.description || 'No description' }}
+                </div>
+                <div class="template-list-meta">
+                  Updated: {{ formatDate(template.updatedAt) }}
+                </div>
               </div>
-              <div class="template-list-meta">
-                Updated: {{ formatDate(template.updatedAt) }}
-              </div>
+              <button
+                class="btn btn-danger"
+                style="margin-left:8px"
+                @click.stop="deleteTemplateById(template.id)"
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>
@@ -103,7 +111,8 @@ import VariablePanel from '@/components/variables/VariablePanel.vue'
 import { htmlToDocxTemplate } from '@/utils/templateConverter'
 import {
   getAllTemplates,
-  saveTemplate as saveTemplateToStorage
+  saveTemplate as saveTemplateToStorage,
+  deleteTemplate as deleteTemplateFromStorage
 } from '@/utils/templateStorage'
 
 /*
@@ -338,6 +347,20 @@ export default {
 
     toggleVariablePanel() {
       this.showVariablePanel = !this.showVariablePanel
+    },
+
+    deleteTemplateById(id) {
+      if (confirm('Are you sure you want to delete this template?')) {
+        deleteTemplateFromStorage(id)
+        this.loadAvailableTemplates()
+        // If the deleted template is currently loaded, clear the editor
+        if (this.templateId === id) {
+          this.templateId = null
+          this.templateName = ''
+          this.templateDescription = ''
+          this.editorData = ''
+        }
+      }
     }
   }
 }
@@ -688,6 +711,8 @@ export default {
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
 }
 
 .template-list-item:hover {
